@@ -22,15 +22,38 @@ check_and_install_packages() {
     echo "AppImage 실행에 필요한 패키지들을 설치합니다..."
     if command -v apt &> /dev/null; then
         sudo apt update
-        sudo apt install -y libfuse2 fuse
+        sudo apt install -y libfuse2 fuse \
+            libc6 libglib2.0-0 libcairo2 \
+            libgl1-mesa-glx libnss3 libxcb1 \
+            libx11-6 libxcomposite1 libxcursor1 \
+            libxdamage1 libxext6 libxfixes3 \
+            libxi6 libxrandr2 libxrender1 \
+            libxss1 libxtst6 libasound2
     elif command -v dnf &> /dev/null; then
-        sudo dnf install -y fuse-libs fuse
+        sudo dnf install -y fuse-libs fuse \
+            glib2 cairo mesa-libGL nss \
+            libxcb libX11 libXcomposite \
+            libXcursor libXdamage libXext \
+            libXfixes libXi libXrandr \
+            libXrender libXScrnSaver \
+            libXtst alsa-lib
     elif command -v yum &> /dev/null; then
-        sudo yum install -y fuse-libs fuse
+        sudo yum install -y fuse-libs fuse \
+            glib2 cairo mesa-libGL nss \
+            libxcb libX11 libXcomposite \
+            libXcursor libXdamage libXext \
+            libXfixes libXi libXrandr \
+            libXrender libXScrnSaver \
+            libXtst alsa-lib
     elif command -v pacman &> /dev/null; then
-        sudo pacman -S --noconfirm fuse2 fuse3
+        sudo pacman -S --noconfirm fuse2 fuse3 \
+            glib2 cairo mesa nss libxcb \
+            libx11 libxcomposite libxcursor \
+            libxdamage libxext libxfixes \
+            libxi libxrandr libxrender \
+            libxss libxtst alsa-lib
     else
-        echo "패키지 관리자를 찾을 수 없습니다. fuse를 수동으로 설치해주세요."
+        echo "패키지 관리자를 찾을 수 없습니다."
         exit 1
     fi
 }
@@ -57,13 +80,15 @@ echo "다운로드 완료!"
 chmod +x "$FILENAME"
 echo "실행 권한을 부여했습니다."
 
-# AppImage 실행 전 FUSE 확인
-if ! grep -q fuse /proc/filesystems && ! modprobe fuse; then
-    echo "FUSE 파일시스템을 로드할 수 없습니다."
-    echo "시스템 관리자에게 문의하세요."
+# AppImage 실행 전 시스템 아키텍처 확인
+if [ "$(uname -m)" != "x86_64" ]; then
+    echo "이 애플리케이션은 64비트 시스템에서만 실행할 수 있습니다."
     exit 1
 fi
 
-# AppImage 실행
+# AppImage 실행 시도
 echo "Oasis AI를 실행합니다..."
-./"$FILENAME" 
+./"$FILENAME" --no-sandbox || {
+    echo "기본 실행 방식 실패, 대체 방식으로 시도합니다..."
+    ./"$FILENAME" --appimage-extract-and-run
+}
